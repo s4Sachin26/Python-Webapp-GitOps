@@ -59,9 +59,9 @@ jobs:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
       - name: Run Gitleaks to detect secrets
-        uses: gitleaks/gitleaks-action@v2
-        with:
-          args: detect --source . --no-git --exit-code 1 -v
+        run: |
+          curl -sSfL https://raw.githubusercontent.com/gitleaks/gitleaks/master/install.sh | sh
+          gitleaks detect --source . --no-git --exit-code 1 -v
           
   build-and-deploy:
     needs: [test, code-analysis]
