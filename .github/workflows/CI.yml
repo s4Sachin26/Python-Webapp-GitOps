@@ -42,3 +42,13 @@ jobs:
           git add k8s-manifest/deployment.yaml
           git commit -m "Updated image tag to ${{ github.sha }}"
           git push
+
+               
+      - name: Set up kubeconfig
+        run: |
+          echo "${{ secrets.KUBECONFIG_DATA }}" | base64 --decode > $HOME/.kube/config
+          chmod 600 $HOME/.kube/config
+
+      - name: Deploy to K3s
+        run: |
+          kubectl apply -f k8s-manifest/deployment.yaml
