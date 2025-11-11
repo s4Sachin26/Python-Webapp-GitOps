@@ -59,7 +59,7 @@ jobs:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
       - name: Run Gitleaks to detect secrets
-        uses: gitleaks/gitleaks-action@v2@b59b86c3de384b39e76efca8f2c601aa47a0f066
+        uses: gitleaks/gitleaks-action@v2
         with:
           config-path: .gitleaks.toml
           args: detect --source . --no-git -v        
