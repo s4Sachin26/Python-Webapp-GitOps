@@ -1,4 +1,4 @@
-name: Build, Push & Update Manifest
+name: Github Actions PipeLine
 
 on:
   workflow_dispatch:
@@ -55,7 +55,7 @@ jobs:
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_PROJECT_KEY: ${{ secrets.SONAR_PROJECT_KEY }}
-          SONAR_ORGANIZATION: ${{ secrets.SONAR_ORG }}
+          SONAR_ORGANIZATION: ${{ secrets.SONAR_ORGANIZATION }}
 
       - name: Run Gitleaks to detect secrets
         uses: gitleaks/gitleaks-action@v2
