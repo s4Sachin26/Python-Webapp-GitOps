@@ -23,7 +23,7 @@ jobs:
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Build and push image
-        id: build
+        id: docker_build
         uses: docker/build-push-action@v5
         with:
           push: true
@@ -31,25 +31,24 @@ jobs:
             s4sachin/pythonapp:latest
             s4sachin/pythonapp:${{ github.sha }}
 
-      - name: Update Kubernetes manifest with new image
-        run: |
-          sed -i "s|image:.*|image: s4sachin/pythonapp:${{ github.sha }}|g" k8s-manifest/deployment.yaml
-
-      - name: Commit and push updated manifest
-        run: |
-          git config user.name "s4Sachin26"
-          git config user.email "sforsachin8@gmail.com"
-          git add k8s-manifest/deployment.yaml
-          git commit -m "Updated image tag to ${{ github.sha }}"
-          git push
-
-               
       - name: Set up kubeconfig
         run: |
           mkdir -p $HOME/.kube
           echo "${{ secrets.KUBECONFIG_DATA }}" | base64 --decode > $HOME/.kube/config
           chmod 600 $HOME/.kube/config
 
+      - name: Update Kubernetes manifest with new image
+        run: |
+          echo "Deploying image: s4sachin/pythonapp:${{ github.sha }}"
+          sed -i "s|image:.*|image: s4sachin/pythonapp:${{ github.sha }}|g" k8s-manifest/deployment.yaml
+
       - name: Deploy to K3s
         run: |
           kubectl apply -f k8s-manifest/deployment.yaml
+          kubectl rollout status deployment/python-app-deployment
+
+      - name: Show deployed image
+        run: |
+          kubectl get deployment python-app-deployment -o jsonpath="{.spec.template.spec.containers[0].image}"
+
+
