@@ -61,8 +61,7 @@ jobs:
       - name: Run Gitleaks to detect secrets
         uses: gitleaks/gitleaks-action@v2
         with:
-          config-path: .gitleaks.toml
-          args: detect --source . --no-git -v        
+          args: detect --source . --no-git --exit-code 1 -v
           
   build-and-deploy:
     needs: [test, code-analysis]
