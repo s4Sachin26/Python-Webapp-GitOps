@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
       - name: python-app
-        image: s4sachin/pythonapp:ee6793dfb0fa49c38c6908068b038a4ede86db47
+        image: s4sachin/pythonapp:e60410149d28839615933f0d7e91a2ed6b6dc352
         ports:
         - containerPort: 5000
         readinessProbe:
