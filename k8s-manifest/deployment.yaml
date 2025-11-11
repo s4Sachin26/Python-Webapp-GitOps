@@ -19,6 +19,12 @@ spec:
         image: s4sachin/pythonapp:5424d0e8b049de38b926ac9e0ad3703ef80fba73
         ports:
         - containerPort: 5000
+        readinessProbe:
+            httpGet:
+              path: /
+              port: 5000
+            initialDelaySeconds: 5
+            periodSeconds: 5
 
 ---
 apiVersion: v1
