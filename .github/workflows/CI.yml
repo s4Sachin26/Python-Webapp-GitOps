@@ -31,12 +31,6 @@ jobs:
             s4sachin/pythonapp:latest
             s4sachin/pythonapp:${{ github.sha }}
 
-      - name: Set up kubeconfig
-        run: |
-          mkdir -p $HOME/.kube
-          echo "${{ secrets.KUBECONFIG_DATA }}" | base64 --decode > $HOME/.kube/config
-          chmod 600 $HOME/.kube/config
-
       - name: Update Kubernetes manifest with new image
         run: |
           echo "Updating deployment.yaml with image s4sachin/pythonapp:${{ github.sha }}"
@@ -49,9 +43,4 @@ jobs:
           git add k8s-manifest/deployment.yaml
           git commit -m "Update image to ${{ github.sha }}" || echo "No changes to commit"
           git push
-
-      - name: Show deployed image
-        run: |
-          kubectl get deployment python-app-deployment -o jsonpath="{.spec.template.spec.containers[0].image}"
-
 
