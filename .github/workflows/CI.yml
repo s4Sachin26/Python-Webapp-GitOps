@@ -39,13 +39,16 @@ jobs:
 
       - name: Update Kubernetes manifest with new image
         run: |
-          echo "Deploying image: s4sachin/pythonapp:${{ github.sha }}"
+          echo "Updating deployment.yaml with image s4sachin/pythonapp:${{ github.sha }}"
           sed -i "s|image:.*|image: s4sachin/pythonapp:${{ github.sha }}|g" k8s-manifest/deployment.yaml
 
-      - name: Deploy to K3s
+      - name: Commit updated manifest
         run: |
-          kubectl apply -f k8s-manifest/deployment.yaml
-          kubectl rollout status deployment/python-app-deployment
+          git config user.name "s4Sachin26"
+          git config user.email "sforsachin8@gmail.com"
+          git add k8s-manifest/deployment.yaml
+          git commit -m "Update image to ${{ github.sha }}" || echo "No changes to commit"
+          git push
 
       - name: Show deployed image
         run: |
