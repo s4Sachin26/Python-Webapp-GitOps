@@ -1,0 +1,47 @@
+name: Build, Push & Update Manifest
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'src/**'
+      - 'Dockerfile'
+      - '.github/workflows/**'
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to DockerHub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and push image
+        id: build
+        uses: docker/build-push-action@v5
+        with:
+          push: true
+          tags: |
+            s4sachin/pythonapp:latest
+            s4sachin/pythonapp:${{ github.sha }}
+
+      - name: Update Kubernetes manifest with new image
+        run: |
+          sed -i "s|image:.*|image: s4sachin/pythonapp:${{ github.sha }}|g" k8s-manifest/deployment.yaml
+
+      - name: Commit and push updated manifest
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add k8s-manifest/deployment.yaml
+          git commit -m "Updated image tag to ${{ github.sha }}"
+          git push
