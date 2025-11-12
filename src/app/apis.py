@@ -8,8 +8,10 @@ olddata = {
     "net_recv": 0,
 }
 
+
 #
 # This route returns real-time process information as a REST API
+#
 #
 @app.route("/api/process")
 def api_process():
