@@ -5,9 +5,36 @@ on:
 
 permissions:
   contents: write
+
+env:
+  IMAGE_NAME: pythonapp
   
 jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install lint dependencies
+        run: |
+          pip install flake8 bandit
+
+      - name: Run flake8 (style + syntax)
+        run: |
+          flake8 src --max-line-length=120 --statistics
+
+      - name: Run Bandit (security lint)
+        run: |
+          bandit -r src -ll
+          
   test:
+    needs: lint
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
@@ -42,7 +69,7 @@ jobs:
           path: pytest-report.xml
   
   code-analysis:
-    needs: test
+    needs: [lint, test]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -63,16 +90,39 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           
-  build-and-deploy:
-    needs: [test, code-analysis]
+  security-scan:
+    needs: [lint, test, code-analysis]
     runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run Trivy FS scan 
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: fs
+          scan-ref: .
+          format: table
+          exit-code: 0  
+          ignore-unfixed: true
+
+      - name: Upload Trivy FS scan report
+        uses: actions/upload-artifact@v4
+        with:
+          name: trivy-fs-report
+          path: trivy-report.txt          
+  build:
+    needs: [lint, test, code-analysis, security-scan]
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.sem_ver.outputs.version }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
       - name: Set semantic version
         id: sem_ver
-        run: echo "VERSION=v1.0.${{ github.run_number }}" >> $GITHUB_ENV
+        run: echo "VERSION=v1.0.${{ github.run_number }}" >> $GITHUB_OUTPUT
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -89,19 +139,34 @@ jobs:
         with:
           push: true
           tags: |
-            ${{ secrets.DOCKERHUB_USERNAME }}/pythonapp:latest
-            ${{ secrets.DOCKERHUB_USERNAME }}/pythonapp:${{ env.VERSION }}
+            ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}:latest
+            ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}:${{ needs.sem_ver.outputs.version }}
 
-      - name: Update Kubernetes manifest with new image
-        run: |
-          echo "Updating deployment.yaml with image s4sachin/pythonapp:${{ env.VERSION }}"
-          sed -i "s|image:.*|image: s4sachin/pythonapp:${{ env.VERSION }}|g" k8s-manifest/deployment.yaml
+      - name: Scan built image for vulnerabilities
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}:${{ needs.sem_ver.outputs.version }}
+          format: table
+          exit-code: 0
+          ignore-unfixed: true
+          
+  deploy:
+    needs: [lint, test, code-analysis, security-scan, build]
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
 
-      - name: Commit updated manifest
-        run: |
-          git config user.name "ci-bot"
-          git config user.email "ci-bot@users.noreply.github.com"
-          git add k8s-manifest/deployment.yaml
-          git commit -m "Update image to ${{ github.sha }}" || echo "No changes to commit"
-          git push
+    - name: Update Kubernetes manifest with new image
+      run: |
+        echo "Updating deployment.yaml with image ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}:${{ needs.build.outputs.version }}"
+        sed -i "s|image:.*|image: ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}:${{ needs.build.outputs.version }}|g" k8s-manifest/deployment.yaml
+
+    - name: Commit updated manifest
+      run: |
+        git config user.name "ci-bot"
+        git config user.email "ci-bot@users.noreply.github.com"
+        git add k8s-manifest/deployment.yaml
+        git commit -m "Update image to ${{ needs.build.outputs.version }}" || echo "No changes to commit"
+        git push
 
