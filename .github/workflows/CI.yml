@@ -103,6 +103,7 @@ jobs:
           scan-type: fs
           scan-ref: .
           format: table
+          output: trivy-report.txt
           exit-code: 0  
           ignore-unfixed: true
 
